@@ -30,7 +30,6 @@ export class RolesGuard implements CanActivate {
   }
 }
 
-
 // Define the matchRoles function
 const matchRoles = (roles: string[], userRoles: string[]): boolean => {
   if (!Array.isArray(roles) || !Array.isArray(userRoles)) {

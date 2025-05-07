@@ -18,6 +18,9 @@ export class User {
 
   @Column()
   email: string;
+
+  @Column()
+  loginkey: number;
   
   @CreateDateColumn({type: 'timestamp'})
   createdAt: Date;

@@ -3,6 +3,7 @@ import { User } from './entity/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ResultDTO, UpdateUserDTO, UserDTO, UserListDTO } from '../auth/dto/user.dto';
+import { ResultType } from 'src/common/result-type';
 
 @Injectable()
 export class UserService {
@@ -16,7 +17,9 @@ export class UserService {
     console.log(req.user);
     console.log(req.body);
     return {
-      error:0, result:"OK", message:"success"
+      "error":0, 
+      "result": ResultType.SUCCESS,
+      "message":"완료"
     }
   }
 

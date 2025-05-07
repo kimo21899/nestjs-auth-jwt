@@ -1,13 +1,14 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { LoggerMiddleware } from './common/middleware/logger.middleware';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { UserModule } from './users/user.module';
 import { AuthModule } from './auth/auth.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { LoggerMiddleware } from './common/middleware/logger.middleware';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './users/entity/user.entity';
 import { UserAuthority } from './users/entity/user_authority';
-import { UserModule } from './users/user.module';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { UserLoginlog } from './users/entity/user.loginlog';
 
 
 @Module({
@@ -29,7 +30,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         username: configService.get<string>('DB_USERNAME'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
-        entities: [User, UserAuthority],
+        entities: [User, UserAuthority, UserLoginlog],
         synchronize: true, // 운영 환경에서는 false
         charset: 'utf8mb4', // Add this line
       }),

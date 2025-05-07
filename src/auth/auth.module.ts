@@ -2,14 +2,15 @@ import { Module } from '@nestjs/common';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { User } from 'src/users/entity/user.entity';
-import { UserAuthority } from 'src/users/entity/user_authority';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { User } from 'src/users/entity/user.entity';
+import { UserAuthority } from 'src/users/entity/user_authority';
+import { UserLoginlog } from 'src/users/entity/user.loginlog';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, UserAuthority]),
+    TypeOrmModule.forFeature([User, UserAuthority, UserLoginlog]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({

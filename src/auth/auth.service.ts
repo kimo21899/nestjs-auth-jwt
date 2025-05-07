@@ -1,14 +1,17 @@
-import { BadRequestException, Injectable, InternalServerErrorException, Logger, Param } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, Logger, Param, Res } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { User } from 'src/users/entity/user.entity';
 import { CreateUserDTO, RegisterResponseDTO, ResultDTO, UpdateUserDTO, UserDTO, UserListDTO } from './dto/user.dto';
-import { LoginDTO, LoginResultDTO } from './dto/login.dto';
+import { LoginDTO, LoginResultDTO} from './dto/login.dto';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
-import { UserAuthority } from 'src/users/entity/user_authority';
 import { RoleType } from '../common/guards/role-type';
 import { Payload } from './payload.interface';
+import { ResultType } from 'src/common/result-type';
+import { Repository } from 'typeorm';
+import { User } from 'src/users/entity/user.entity';
+import { UserAuthority } from 'src/users/entity/user_authority';
+import { UserLoginlog } from 'src/users/entity/user.loginlog';
+import { Response } from 'express';
 
 @Injectable()
 export class AuthService {
@@ -19,6 +22,8 @@ export class AuthService {
     private userRepository: Repository<User>,    
     @InjectRepository(UserAuthority)
     private userAuthorityRepository: Repository<UserAuthority>,
+    @InjectRepository(UserLoginlog)
+    private userLoginLogRepository: Repository<UserLoginlog>,
     private jwtService: JwtService,
   ){}
 
@@ -46,27 +51,28 @@ export class AuthService {
   // 회원등록 처리  
   async registerUser(createUserDTO: CreateUserDTO): Promise<RegisterResponseDTO> {
     try {
-      // 추가 검증: authorities가 유효한지 확인
-      if (!createUserDTO.authorities || createUserDTO.authorities.length === 0) {
-        throw new BadRequestException('authorities는 비어 있을 수 없습니다.');
-      }
-      // role 입력값 검증
-      const validAuthorities = Object.values(RoleType);
-      const invalidAuthorities = createUserDTO.authorities.filter(
-        auth => !validAuthorities.includes(auth),
-      );
-      if (invalidAuthorities.length > 0) {
-        throw new BadRequestException(
-          `입력 값이 올바르지 않습니다. 잘못된 값: ${invalidAuthorities.join(', ')}`,
-        );
-      }
+      // // 추가 검증: authorities가 유효한지 확인
+      // if (!createUserDTO.authorities || createUserDTO.authorities.length === 0) {
+      //   throw new BadRequestException('authorities는 비어 있을 수 없습니다.');
+      // }
+      // // role 입력값 검증
+      // const validAuthorities = Object.values(RoleType);
+      // const invalidAuthorities = createUserDTO.authorities.filter(
+      //   auth => !validAuthorities.includes(auth),
+      // );
+      // if (invalidAuthorities.length > 0) {
+      //   throw new BadRequestException(
+      //     `입력 값이 올바르지 않습니다. 잘못된 값: ${invalidAuthorities.join(', ')}`,
+      //   );
+      // }
+
       // username 중복확인
       const existingUserName = await this.findByUsername(createUserDTO.username);
       if (existingUserName) {
         return {
           username: createUserDTO.username,
           nickname: createUserDTO.nickname,
-          result: 'ERROR',
+          result: ResultType.ERROR,
           message: '이미 이용중인 아이디 입니다.',
         };
       }
@@ -76,7 +82,7 @@ export class AuthService {
         return {
           username: createUserDTO.username,
           nickname: createUserDTO.nickname,
-          result: 'ERROR',
+          result: ResultType.ERROR,
           message: '이미 이용중인 닉네임 입니다.',
         };
       }
@@ -93,21 +99,32 @@ export class AuthService {
       const savedUser = await this.userRepository.save(user);
 
       // 회원권한 배열생성 (RoleType[])
-      const authorities = createUserDTO.authorities.map(auth =>
-        this.userAuthorityRepository.create({
-          userId: savedUser.id,
-          userAuthority: auth,
-          user: savedUser,
-        }),
-      );
+      // const authorities = createUserDTO.authorities.map(auth =>
+      //   this.userAuthorityRepository.create({
+      //     userId: savedUser.id,
+      //     userAuthority: auth,
+      //     user: savedUser,
+      //   }),
+      // );
+
+      // authorities 값에 기본값 설정하기
+      const authorities = this.userAuthorityRepository.create({
+        userId: savedUser.id,
+        userAuthority: RoleType.ROLE_USER,
+        user: savedUser,
+      });
+      
 
       //  회원권한 DB등록
-      await this.userAuthorityRepository.save(authorities);
+      if(authorities){
+        await this.userAuthorityRepository.save(authorities);
+      }
+      
 
       return {
         username: createUserDTO.username,
         nickname: createUserDTO.nickname,
-        result: 'OK',
+        result: ResultType.SUCCESS,
         message: '회원가입완료.',
       };
 
@@ -118,7 +135,10 @@ export class AuthService {
 
 
   // 아이디로 기존 회원을 찾기 (가입시:아이디중복확인, 조회시: 회원정보조회)
-  async loginUser(loginDTO: LoginDTO): Promise<LoginResultDTO> {
+  async loginUser(
+    loginDTO: LoginDTO,
+    @Res({ passthrough: true }) res: Response
+  ): Promise<LoginResultDTO> {
     try {
       const user = await this.userRepository.findOne({ where: { username: loginDTO.username }, relations: ['authorities'] });
       if (!user) {
@@ -126,7 +146,8 @@ export class AuthService {
         return {
           username: loginDTO.username,
           nickname: "",
-          result: 'ERROR',
+          loginkey: 0,
+          result: ResultType.ERROR,
           message: 'User not found',
         };
       }
@@ -138,19 +159,39 @@ export class AuthService {
         return {
           username: loginDTO.username,
           nickname: "",
-          result: 'ERROR',
+          loginkey: 0,
+          result: ResultType.ERROR,
           message: 'Invalid password for username',
         };
       }
 
-      // 로그인 성공시 토큰발행
-      const payload: Payload = {id:user.id, username: user.username, nickname: user.nickname, authorities: user.authorities.map(auth => auth.userAuthority) };
+      // 유저의 loginkey 수정 (DB 보안)
+      const loginkey = Math.floor(Math.random() * 100000000);
+      user.loginkey=loginkey;
+
+      // 유저정보저장, 로그인로그 저장
+      await this.userRepository.save(user);
+      await this.userLoginLogRepository.save({username: user.username, loginkey: loginkey, loginResult: ResultType.SUCCESS});
+
+      // 로그인 성공시 토큰발행      
+      const payload: Payload = {id:user.id, username: user.username, nickname: user.nickname, loginkey: loginkey, authorities: user.authorities.map(auth => auth.userAuthority) };
       const token = this.jwtService.sign(payload);
+ 
+      // 쿠키저장
+      res.cookie('Authentication', token, {
+        httpOnly: true,     // JavaScript에서 접근 불가 (보안)
+        secure: false,       // HTTPS 에서만 전송
+        sameSite: 'lax',    // CORS 대응
+        maxAge: 1000 * 60 * 60, // 1시간
+      });
+
       const result = new LoginResultDTO(user);
       result.token = token;
       result.nickname = user.nickname; 
-      result.result = "OK";
+      result.loginkey = loginkey;
+      result.result = ResultType.SUCCESS;
       result.message = "SUCCESS";
+ 
       this.logger.log(`Login successful for username: ${loginDTO.username}`);
       return result;
       
@@ -161,13 +202,13 @@ export class AuthService {
   }
 
   // (/api/users/:id) 회원정보조회 
-  async getUserInfo(id: number): Promise<UserDTO> {
+  async getUserInfo(username: string): Promise<UserDTO> {
     const user = await this.userRepository.findOne({
-      where: { id }, 
+      where: { username }, 
       relations: ['authorities'], // 이걸 넣어야 조인테이블의 데이터를 받아 올 수 있다.
     });
     if (!user) {
-      this.logger.warn(`User not found: ${id}`);
+      this.logger.warn(`User not found: ${username}`);
       throw new InternalServerErrorException('일치하는 회원이 없습니다.');
     }
     // console.log(user);
@@ -222,32 +263,35 @@ export class AuthService {
 
       // 4. 성공.
       this.logger.log(`User with ID ${user.username} updated successfully`, 'AuthService');
-
-      const result = new ResultDTO();
-      result.error = 0;
-      result.result = 'OK';
-      result.message = `${user.username} 정보수정완료`;
-      return result;
+      return {
+        "error":0,
+        "result": ResultType.SUCCESS,
+        "message": "정보수정완료"
+      }
 
     } catch (error) {
       this.logger.error(`Error updating user with ID ${userId}: ${error.message}`, 'AuthService');
-      const result = new ResultDTO();
-      result.error = 1;
-      result.result = 'ERROR';
-      result.message = `회원 정보 수정 실패: ${error.message}`;
-      return result;
+      return {
+        "error":1,
+        "result": ResultType.ERROR,
+        "message": error.message
+      }
     }
   }
 
   // 회원삭제
   async removeUserInfo(username: string): Promise<ResultDTO> {
-    console.log(username);
     const user = await this.userRepository.findOne({
       where: { username: username }, 
       relations: ['authorities'], // 이걸 넣어야 조인테이블의 데이터를 받아 올 수 있다.
     });
     if(!user) {
-      throw new Error(`user with username ${username} not found`);
+      // throw new Error(`user with username ${username} not found`);
+      return {
+        "error":1,
+        "message":"아이디를 찾을 수 없습니다",
+        "result": ResultType.ERROR,
+      };
     }
 
     // 삭제할때는 user.id 를 기준으로 삭제 (외래키 테이블도 함께 삭제위해)
@@ -255,10 +299,10 @@ export class AuthService {
     await this.userRepository.delete({ id: user.id });
     this.logger.log(`User with UserName ${username} deleted successfully`, 'AuthService');  
 
-    let result = new ResultDTO();
-    result.error=0;
-    result.result="OK";
-    result.message=`${username} 회원삭제완료`;
-    return result;
+    return {
+      "error":0,
+      "message":"회원삭제완료",
+      "result": ResultType.SUCCESS,
+    };
   }
 }
