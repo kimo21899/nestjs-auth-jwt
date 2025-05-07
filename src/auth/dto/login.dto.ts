@@ -4,12 +4,10 @@ import { RoleType } from "../../common/guards/role-type";
 
 export class LoginDTO {
   @IsString()
-  @MinLength(4)
   @MaxLength(20)
   username: string;
 
   @IsString()
-  @MinLength(4)
   @MaxLength(20)
   password: string;
 }
@@ -19,11 +17,13 @@ export class LoginResultDTO {
   token?: string;
   authorities?: RoleType[];  
   username: string;
+  nickname: string;
   result: 'OK' | 'ERROR';
   message: string;
   constructor(user: User) {
     this.id = user.id;
     this.username = user.username;
+    this.nickname = user.nickname;
     this.authorities = user.authorities.map(auth => auth.userAuthority);
     this.result = "ERROR";
     this.message = "대기"

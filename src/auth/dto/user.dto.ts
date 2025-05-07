@@ -5,19 +5,21 @@ import { RoleType } from '../../common/guards/role-type';
 
 export class UserDTO {
   id: number;
-  email: string;
   username: string;
+  nickname: string;
+  email: string;
   createdAt: Date;
   updatedAt: Date;
   authorities: RoleType[];
 
   constructor(user: User) {
     this.id = user.id;
-    this.email = user.email;
     this.username = user.username;
+    this.nickname = user.nickname;
+    this.email = user.email;
     this.createdAt = user.createdAt;
     this.updatedAt = user.updatedAt;
-    this.authorities = user.authorities.map(auth => auth.userAuthority);
+    this.authorities = user.authorities.map(auth => auth.userAuthority) || [];
   }
 }
 
@@ -31,13 +33,18 @@ export class UserListDTO {
 export class CreateUserDTO {
   @IsString()
   @MinLength(4)
-  @MaxLength(30)
+  @MaxLength(20)
   username: string;
 
   @IsString()
   @MinLength(6)
   @MaxLength(20)
   password: string;
+
+  @IsString()
+  @MinLength(4)
+  @MaxLength(20)
+  nickname: string;
 
   @IsEmail()
   @MaxLength(50)
@@ -51,8 +58,7 @@ export class CreateUserDTO {
 
 export class RegisterResponseDTO {
   username: string;
-  // email: string;
-  // authorities: UserAuthorityType[];
+  nickname: string;
   result: 'OK' | 'ERROR';
   message: string;
 }
@@ -62,6 +68,16 @@ export class RegisterResponseDTO {
 export class UpdateUserDTO {
   @IsNumber()
   id?: number;
+
+  @IsString()
+  @MinLength(4)
+  @MaxLength(20)
+  username: string;
+
+  @IsString()
+  @MinLength(4)
+  @MaxLength(20)
+  nickname: string;
 
   @IsEmail()
   @MaxLength(50)

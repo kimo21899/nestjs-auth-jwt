@@ -31,6 +31,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         database: configService.get<string>('DB_DATABASE'),
         entities: [User, UserAuthority],
         synchronize: true, // 운영 환경에서는 false
+        charset: 'utf8mb4', // Add this line
       }),
     }),
 
