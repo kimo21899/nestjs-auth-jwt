@@ -7,8 +7,8 @@ import { AuthModule } from './auth/auth.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { User } from './users/entity/user.entity';
-import { UserAuthority } from './users/entity/user_authority';
 import { UserLoginlog } from './users/entity/user.loginlog';
+import { BlogModule } from './blog/blog.module';
 
 
 @Module({
@@ -30,7 +30,7 @@ import { UserLoginlog } from './users/entity/user.loginlog';
         username: configService.get<string>('DB_USERNAME'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
-        entities: [User, UserAuthority, UserLoginlog],
+        entities: [User, UserLoginlog],
         synchronize: true, // 운영 환경에서는 false
         charset: 'utf8mb4', // Add this line
       }),
@@ -39,6 +39,7 @@ import { UserLoginlog } from './users/entity/user.loginlog';
     // 3. 나머지 모듈
     UserModule,
     AuthModule,
+    BlogModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -17,29 +17,29 @@ export class RolesGuard implements CanActivate {
     // Http Header token 확인
     const request = context.switchToHttp().getRequest();
     const user = request.user;
+
+    // console.log(user.authority);
+
     // 역할 비교
-    const hasRole = matchRoles(guardRoles, user.authorities);
+    const hasRole = matchRoles(guardRoles, user.authority);
     if (!hasRole) {
       this.logger.warn(`User ${user.username} lacks required roles: ${guardRoles}`, 'RolesGuard');
       throw new ForbiddenException('필요한 권한이 없습니다.');
     }
 
-    // this.logger.debug(`User ${user.username} has required roles: ${guardRoles}`, 'RolesGuard');
     return true;
-
   }
 }
 
 // Define the matchRoles function
-const matchRoles = (roles: string[], userRoles: string[]): boolean => {
-  if (!Array.isArray(roles) || !Array.isArray(userRoles)) {
-    // Logger.error('Invalid input: roles or userRoles is not an array', undefined, 'RolesGuard');
+const matchRoles = (roles: string[], userRoles: string): boolean => {
+  console.log('roles==', roles);
+  console.log('userRoles=',userRoles);
+  if (!Array.isArray(roles) || !(userRoles)) {    
     return false;
   }
-  // Logger.debug(`Checking roles: ${roles}`, 'RolesGuard');
-  // Logger.debug(`User roles: ${userRoles}`, 'RolesGuard');
   // 대소문자 무시 및 공백 제거
   const normalizedRoles = roles.map(role => role.trim().toUpperCase());
-  const normalizedUserRoles = userRoles.map(role => role.trim().toUpperCase());
-  return normalizedRoles.some(role => normalizedUserRoles.includes(role));
+  return normalizedRoles.some(role => userRoles.includes(role));
+
 };

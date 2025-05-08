@@ -1,6 +1,6 @@
-import { BeforeInsert, Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
-import { UserAuthority } from "./user_authority";
+import { BeforeInsert, Column, CreateDateColumn, Entity, JoinColumn, OneToMany, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import * as bcrypt from 'bcrypt';
+import { RoleType } from "src/common/guards/role-type";
 
 @Entity()
 export class User {
@@ -19,17 +19,17 @@ export class User {
   @Column()
   email: string;
 
-  @Column()
-  loginkey: number;
-  
+  @Column({ default: ""})
+  loginkey: string;
+
+  @Column({ type: 'enum', enum: RoleType })
+  authority: RoleType;
+
   @CreateDateColumn({type: 'timestamp'})
   createdAt: Date;
 
   @UpdateDateColumn({type:'timestamp'})
-  updatedAt: Date;
-
-  @OneToMany(() => UserAuthority, userAuthority => userAuthority.user)
-  authorities: UserAuthority[];
+  updatedAt: Date; 
 
   @BeforeInsert()
   async hashPassword() {

@@ -1,7 +1,10 @@
+import { RoleType } from "src/common/guards/role-type";
+
 export interface Payload {
   id: number;
   username: string;
   nickname: string;
-  loginkey: number;
-  authorities?: any[];
+  email: string;
+  loginkey: string;
+  authority: RoleType;
 }

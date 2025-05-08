@@ -1,9 +1,8 @@
-import { IsEnum, IsString, MaxLength, MinLength } from "class-validator";
-import { User } from "src/users/entity/user.entity";
-import { RoleType } from "../../common/guards/role-type";
+import { IsEnum, IsString, MaxLength } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
 import { ResultType } from "src/common/result-type";
 
+// 로그인요청
 export class LoginDTO {
   @ApiProperty({ description: '아이디', example: 'userid' })
   @IsString()
@@ -16,27 +15,24 @@ export class LoginDTO {
   password: string;
 }
 
-export class LoginResultDTO {
-  id?: number;
-  token?: string;
-  authorities?: RoleType[];  
-  username: string;
-  nickname: string;
-  loginkey: number;
-  result: ResultType;
-  message: string;
-  constructor(user: User) {
-    this.id = user.id;
-    this.username = user.username;
-    this.nickname = user.nickname;
-    this.authorities = user.authorities.map(auth => auth.userAuthority);
-    this.result = ResultType.ERROR
-    this.message = "대기"
-  }
-}
-
+// 로그인로그
 export class LoginLogDTO {   
     username: string;
-    loginkey: number;
+    loginkey: string;
     loginResult: ResultType;
+    connectUrl: string;    
+}
+
+// 로그인 결과
+export class LoginResultDTO {
+  username: string;
+  result: ResultType;
+  message: string;  
+}
+
+// 결과응답
+export class ResultDTO {
+  error: number;
+  result: ResultType;
+  message: string;
 }

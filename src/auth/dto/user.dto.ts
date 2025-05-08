@@ -1,11 +1,11 @@
-import { IsString, IsEmail, MinLength, IsEnum, ArrayNotEmpty, IsArray, MaxLength, IsNumber, Matches } from 'class-validator';
+import { IsString, IsEmail, MinLength, IsEnum, IsArray, MaxLength, IsNumber, Matches } from 'class-validator';
 import { User } from 'src/users/entity/user.entity';
 import { RoleType } from '../../common/guards/role-type';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmptyString } from 'src/common/decorator/is-not-empty-string.decorator';
 import { ResultType } from 'src/common/result-type';
 
-
+//서버내에서 회원정보를 다룰때 사용
 export class UserDTO {
   id: number;
   username: string;
@@ -13,7 +13,7 @@ export class UserDTO {
   email: string;
   createdAt: Date;
   updatedAt: Date;
-  authorities: RoleType[];
+  authority: RoleType;
 
   constructor(user: User) {
     this.id = user.id;
@@ -22,15 +22,27 @@ export class UserDTO {
     this.email = user.email;
     this.createdAt = user.createdAt;
     this.updatedAt = user.updatedAt;
-    this.authorities = user.authorities.map(auth => auth.userAuthority) || [];
+    this.authority = user.authority;
   }
 }
 
+// 유저목록 리스트
 export class UserListDTO {
   users: UserDTO[];
   total: number;
   page: number;
   limit: number;
+}
+
+// 클라이언트에 유저정보를 제공할때 사용
+export class UserResponseDTO {
+  id: number;
+  username: string;
+  nickname: string;
+  email: string;
+  constructor(partial: Partial<UserResponseDTO>) {
+    Object.assign(this, partial);
+  }
 }
 
 export class CreateUserDTO {
@@ -58,11 +70,8 @@ export class CreateUserDTO {
   @MaxLength(50)
   email: string;
 
-  // ["USER"] 로 고정하도록 수정
-  // @IsArray()
-  // @ArrayNotEmpty({ message: 'authorities는 비어 있을 수 없습니다.' })
-  // @IsEnum(RoleType, { each: true, message: 'authorities는 지정된 값만 허용됩니다.' })
-  // authorities: RoleType[];
+  // @IsEnum(RoleType, { each: true, message: 'authority는 지정된 값만 허용됩니다.' })
+  // authority: RoleType;
 }
 
 export class RegisterResponseDTO {
@@ -72,12 +81,8 @@ export class RegisterResponseDTO {
   message: string;
 }
 
-
 // 회원정보수정 (이메일, 권한수정)
 export class UpdateUserDTO {
-  @IsNumber()
-  id?: number;
-
   @ApiProperty({ description: '아이디', example: 'userid' })
   @IsString()
   @MinLength(4)
@@ -95,14 +100,6 @@ export class UpdateUserDTO {
   @MaxLength(50)
   email: string;
 
-  @IsArray()
-  @IsEnum(RoleType, { each: true, message: 'authorities는 지정된 값만 허용됩니다.' })
-  authorities?: RoleType[];
-}
-
-// 수정/삭제/등록 결과응답
-export class ResultDTO {
-  error: number;
-  result: ResultType;
-  message: string;
+  @IsEnum(RoleType, { each: true, message: 'authority는 지정된 값만 허용됩니다.' })
+  authority: RoleType;
 }

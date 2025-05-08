@@ -11,10 +11,13 @@ export class UserLoginlog {
   username: string;
 
   @Column()
-  loginkey: number;
+  loginkey: string;
 
   @Column({ type: 'enum', enum: ResultType })
   loginResult: ResultType;
+
+  @Column({default: 'localhost'})
+  connectUrl: string;
 
   @CreateDateColumn({type: 'timestamp'})
   createdAt: Date;
