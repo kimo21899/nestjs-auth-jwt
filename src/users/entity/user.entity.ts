@@ -1,38 +1,57 @@
-import { BeforeInsert, Column, CreateDateColumn, Entity, JoinColumn, OneToMany, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { AfterLoad, BeforeInsert, BeforeUpdate, Column, CreateDateColumn, Entity, JoinColumn, OneToMany, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import * as bcrypt from 'bcrypt';
 import { RoleType } from "src/common/guards/role-type";
+import { BlogPost } from "src/blog/entity/blog-post.entity";
+import { BlogComment } from "src/blog/entity/blog-comment.entity";
 
 @Entity()
 export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ nullable: false })
   username: string;
 
-  @Column()
+  @Column({ nullable: false })
   password: string;
 
-  @Column({ type: 'varchar', length: 255, charset: 'utf8mb4', collation: 'utf8mb4_general_ci' })
+  @Column({ nullable: false,  type: 'varchar', length: 255, charset: 'utf8mb4', collation: 'utf8mb4_general_ci' })
   nickname: string;
 
-  @Column()
+  @Column({ nullable: false })
   email: string;
 
-  @Column({ default: ""})
+  @Column({ nullable: false, default: "1234567890"})
   loginkey: string;
 
-  @Column({ type: 'enum', enum: RoleType })
+  @Column({ nullable: false, type: 'enum', enum: RoleType })
   authority: RoleType;
 
-  @CreateDateColumn({type: 'timestamp'})
+  @CreateDateColumn({ nullable: false, type: 'timestamp'})
   createdAt: Date;
 
-  @UpdateDateColumn({type:'timestamp'})
+  @UpdateDateColumn({ nullable: false, type:'timestamp'})
   updatedAt: Date; 
 
-  @BeforeInsert()
-  async hashPassword() {
-    this.password = await bcrypt.hash(this.password, 10);
+  @OneToMany(() => BlogPost, (post) => post.author)
+  posts: BlogPost[];
+
+  @OneToMany(() => BlogComment, (comment) => comment.author)
+  comments: BlogComment[];
+
+  private tempPassword: string;
+
+  @AfterLoad()
+  private loadTempPassword() {
+    this.tempPassword = this.password;
   }
+
+  @BeforeInsert()
+  @BeforeUpdate()
+  async hashPassword() {
+    if (this.password && this.password !== this.tempPassword) {
+      this.password = await bcrypt.hash(this.password, 10);
+    }
+  }
+
 }

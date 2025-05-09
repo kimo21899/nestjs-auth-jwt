@@ -9,6 +9,9 @@ import { AppService } from './app.service';
 import { User } from './users/entity/user.entity';
 import { UserLoginlog } from './users/entity/user.loginlog';
 import { BlogModule } from './blog/blog.module';
+import { BlogCategory } from './blog/entity/blog-category.entity';
+import { BlogComment } from './blog/entity/blog-comment.entity';
+import { BlogPost } from './blog/entity/blog-post.entity';
 
 
 @Module({
@@ -30,7 +33,7 @@ import { BlogModule } from './blog/blog.module';
         username: configService.get<string>('DB_USERNAME'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
-        entities: [User, UserLoginlog],
+        entities: [User, UserLoginlog, BlogCategory, BlogComment, BlogPost],
         synchronize: true, // 운영 환경에서는 false
         charset: 'utf8mb4', // Add this line
       }),

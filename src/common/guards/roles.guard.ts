@@ -33,8 +33,8 @@ export class RolesGuard implements CanActivate {
 
 // Define the matchRoles function
 const matchRoles = (roles: string[], userRoles: string): boolean => {
-  console.log('roles==', roles);
-  console.log('userRoles=',userRoles);
+  // console.log('roles==', roles);
+  // console.log('userRoles=',userRoles);
   if (!Array.isArray(roles) || !(userRoles)) {    
     return false;
   }

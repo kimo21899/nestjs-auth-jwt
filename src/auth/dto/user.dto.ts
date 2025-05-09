@@ -50,12 +50,17 @@ export class CreateUserDTO {
   @IsString()
   @MinLength(4)
   @MaxLength(20)
+  @Matches(/^[a-z0-9](?=.*[a-z])(?=.*\d)[a-z0-9]{4,20}$/, {
+    message: '아이디는 영문소문자, 숫자의 조합으로 4자 이상 20자 이하로 입력해주세요 ',
+  })
   username: string;
 
   @ApiProperty({ description: '비밀번호', example: 'password' })
-  @IsNotEmptyString(6, 20)
+  @MinLength(4)
+  @MaxLength(20)
+  @IsNotEmptyString(4, 20)
   @Matches(/^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&.])[A-Za-z\d@$!%*?&.]{6,20}$/, {
-    message: '비밀번호는 문자, 숫자, 특수문자(@, $, !, %, *, ?, &, .)의 조합으로 6자 이상 20자 이하로 입력해주세요 ',
+    message: '비밀번호는 영문문자, 숫자, 특수문자(@,$,!,%,*,?,&,.)의 조합으로 6자 이상 20자 이하로 입력해주세요 ',
   })
   password: string;
 
@@ -63,6 +68,9 @@ export class CreateUserDTO {
   @IsString()
   @MinLength(4)
   @MaxLength(20)
+  @Matches(/^[a-zA-Z가-힣0-9_]{4,20}$/g, {
+    message: '닉네임은 영문소문자, 한글, 숫자의 조합으로 4자 이상 20자 이하로 입력해주세요 ',
+  })
   nickname: string;
 
   @ApiProperty({ description: '이메일', example: 'userid@user.com' })

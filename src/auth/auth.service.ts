@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Injectable, InternalServerErrorException, Logger, Param, Req, Res, UnauthorizedException } from '@nestjs/common';
+import { Body, Injectable, InternalServerErrorException, Logger, Param, Req, Res, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateUserDTO, RegisterResponseDTO, UpdateUserDTO, UserDTO, UserListDTO, UserResponseDTO } from './dto/user.dto';
 import { LoginDTO, LoginResultDTO, ResultDTO} from './dto/login.dto';
@@ -12,6 +12,7 @@ import { User } from 'src/users/entity/user.entity';
 import { UserLoginlog } from 'src/users/entity/user.loginlog';
 import { Request, Response } from 'express';
 import {v4 as uuidv4} from 'uuid';
+import { ResultResponseDto } from 'src/common/dto/response.dto';
 
 @Injectable()
 export class AuthService {
@@ -46,29 +47,26 @@ export class AuthService {
   }
 
   // 회원등록 처리  
-  async registerUser(createUserDTO: CreateUserDTO): Promise<RegisterResponseDTO> {
+  async registerUser(createUserDTO: CreateUserDTO): Promise<ResultResponseDto> {
     try {
       // username 중복확인
       const existingUserName = await this.findByUsername(createUserDTO.username);
       if (existingUserName) {
         return {
-          username: createUserDTO.username,
-          nickname: createUserDTO.nickname,
-          result: ResultType.ERROR,
-          message: '이미 이용중인 아이디 입니다.',
+          result: false,
+          message:"회원가입실패", 
+          error: { code: "1001", details: "이미 이용중인 아이디 입니다"}
         };
       }
       // nickname 중복확인
       const existingNickName = await this.userRepository.findOne({ where: { nickname: createUserDTO.nickname } });
       if (existingNickName) {
         return {
-          username: createUserDTO.username,
-          nickname: createUserDTO.nickname,
-          result: ResultType.ERROR,
-          message: '이미 이용중인 닉네임 입니다.',
+          result: false,
+          message:"회원가입실패", 
+          error: { code: "1002", details: "이미 이용중인 닉네임 입니다"}
         };
       }
-
       // user entity 데이터 입력
       const user = this.userRepository.create({
         username: createUserDTO.username,
@@ -77,19 +75,19 @@ export class AuthService {
         email: createUserDTO.email,        
         authority: RoleType.ROLE_USER,
       });
-
       // 회원 DB 등록(INSERT)
-      const savedUser = await this.userRepository.save(user);
-      
+      const savedUser = await this.userRepository.save(user);      
       return {
-        username: createUserDTO.username,
-        nickname: createUserDTO.nickname,
-        result: ResultType.SUCCESS,
-        message: '회원가입완료.',
+        result: true,
+        message:"회원가입성공", 
+        error: null
       };
-
     } catch (error) {
-      throw new InternalServerErrorException(error);
+      return {
+        result: false,
+        message:"회원가입실패", 
+        error: { code: "9999", details: error}
+      };
     }
   }
 
@@ -99,7 +97,7 @@ export class AuthService {
     @Body() loginDTO: LoginDTO,
     @Res({ passthrough: true }) res: Response,
     @Req() req: Request
-  ): Promise<LoginResultDTO> {
+  ): Promise<ResultResponseDto> {
     try {
       const connUrl = req.headers.referer;;
       const username = loginDTO.username;
@@ -107,22 +105,22 @@ export class AuthService {
 
       const user = await this.userRepository.findOne({ where: { username: username } });
       if (!user) {
-        this.logger.warn(`User not found: ${loginDTO.username}`);        
+        // this.logger.warn(`User not found: ${loginDTO.username}`);   
         return {
-          username: username,
-          result: ResultType.ERROR,
-          message: 'User not found',
+          result: false,
+          message:"로그인실패", 
+          error: { code: "1001", details: "아이디를 확인해 주세요"}
         };
       }
 
       // 입력받은 password가 일치하는지 검사
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
-        this.logger.warn(`Invalid password for username: ${username}`);       
+        // this.logger.warn(`Invalid password for username: ${username}`);       
         return {
-          username: username,
-          result: ResultType.ERROR,
-          message: 'Invalid password for username',
+          result: false,
+          message: "로그인실패",
+          error: { code: "1002", details: "비밀번호가 일치하지 않습니다."}
         };
       }
 
@@ -143,7 +141,7 @@ export class AuthService {
       
       this.logger.log(`Login successful for username: ${loginDTO.username}`);
       
-      // 쿠키밠발행
+      // 쿠키발행
       res.cookie('accessToken', accessToken, {
         httpOnly: true,
         secure: true,
@@ -159,14 +157,19 @@ export class AuthService {
       });
 
       return {
-        username: username,
-        result: ResultType.SUCCESS,
-        message: '로그인성공'
-      } 
+        result: true,
+        message: "로그인성공",
+        error: null
+      };
 
     } catch (error) {
       this.logger.error(`Login error for username: ${loginDTO.username}`, error.stack);
-      throw new InternalServerErrorException('로그인 처리 중 오류가 발생했습니다.');
+      // throw new InternalServerErrorException('로그인 처리 중 오류가 발생했습니다.');
+      return {
+        result: false,
+        message: "로그인실패",
+        error: { code: "9999", details: error}
+      };
     }
   }
 
@@ -188,78 +191,82 @@ export class AuthService {
       this.logger.warn(`User not found: ${username}`);
       throw new InternalServerErrorException('일치하는 회원이 없습니다.');
     }
-    // console.log(user);
-    // Entity 를 DTO로 변환해서 리턴
     return new UserDTO(user);
   }
 
   // 회원정보수정
-  async updateUserInfo(updateUserDto: UpdateUserDTO): Promise<ResultDTO> {   
+  async updateUserInfo(updateUserDto: UpdateUserDTO): Promise<ResultResponseDto> {   
     console.log('updateUserInfo', updateUserDto);
-
     const userName = updateUserDto.username;
-
     let user: User | null = null; // Initialize user as null
 
     try {
       user = await this.userRepository.findOne({ where: { username: userName }});
       if (!user) {
-        throw new Error(`User with ID ${userName} not found`);
+        // throw new Error(`User with ID ${userName} not found`);
+        return {
+          result: false,
+          message:"회원정보오류", 
+          error: { code: "1001", details: "아이디를 찾을 수 없습니다."}
+        };
       }
-
-      console.log("user===", user);
+      // console.log("user===", user);
 
       // 1_1. user.id 와 username 이 같은지 확인
       // Assuming updateUserDto also has a username property for this check
       if (userName && userName !== user.username) {
-        throw new Error(`username 값이 올바르지 않습니다.`);
+        // throw new Error(`username 값이 올바르지 않습니다.`);
+        return {
+          result: false,
+          message:"회원정보오류", 
+          error: { code: "1002", details: "아이디는 변경이 불가합니다."}
+        };
       }
 
       // 1_2. authority 수정
       user.authority = updateUserDto.authority;
+      console.log(user.authority);
 
       // 1_3. 이메일 정보 업데이트 (email이 있다면)
       if (updateUserDto.email && updateUserDto.email !== user.email) {
-        user.email = updateUserDto.email;        
-        await this.userRepository.save(user); // Save the updated email
+        user.email = updateUserDto.email;              
       }
+
+      // 정보수정
+      await this.userRepository.save(user); // Save the updated email
 
       // 3. 성공.
       this.logger.log(`User with ID ${user.username} updated successfully`, 'AuthService');
       return {
-        "error":0,
-        "result": ResultType.SUCCESS,
-        "message": "정보수정완료"
-      }
-
+        result: true,
+        message:"정보수정완료", 
+        error: { code: "0", details: "정보수정완료"}
+      };
     } catch (error) {
       this.logger.error(`Error updating user with ID ${userName}: ${error.message}`, 'AuthService');
       return {
-        "error":1,
-        "result": ResultType.ERROR,
-        "message": error.message
-      }
+        result: false,
+        message:"정보수정오류",
+        error: { code: "9999", details: error.message}
+      };
     }
   }
 
   // 회원삭제
-  async removeUserInfo(username: string): Promise<ResultDTO> {
+  async removeUserInfo(username: string): Promise<ResultResponseDto> {
     const user = await this.userRepository.findOne({ where: { username: username }});
     if(!user) {
       return {
-        "error":1,
-        "message":"아이디를 찾을 수 없습니다",
-        "result": ResultType.ERROR,
+        result: false,
+        message:"삭제실패",
+        error: { code: "1001", details: "아이디를 찾을 수 없습니다"}
       };
     }
-
     await this.userRepository.delete({ id: user.id });
-    // this.logger.log(`User with UserName ${username} deleted successfully`, 'AuthService');  
-
     return {
-      "error":0,
-      "message":"회원삭제완료",
-      "result": ResultType.SUCCESS,
+      result: true,
+      message:"삭제완료",
+      error: null 
     };
   }
 

@@ -25,7 +25,7 @@ export class AuthGuard implements CanActivate {
     // const token = this.extractTokenFromHeader(request); // header에서 token 읽기
     const token = this.extractTokenFromRequest(request);  // cookie에서 token 읽기
     if (!token) {
-      console.log("token 없음");;
+      // console.log("token 없음");
       throw new UnauthorizedException();
     }
 
